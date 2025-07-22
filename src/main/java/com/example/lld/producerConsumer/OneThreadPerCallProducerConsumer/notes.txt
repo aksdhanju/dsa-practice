@@ -1,0 +1,25 @@
+| Feature              | One-Thread-Per-Call                          | Long-Running Threads                   |
+| -------------------- | -------------------------------------------- | -------------------------------------- |
+| **Style**            | Spawn thread per `produce()` or `consume()`  | One thread runs in loop                |
+| **Threads**          | Potentially hundreds/thousands (inefficient) | Fixed number (more efficient)          |
+| **Use case**         | Simple demos or infrequent events            | High-throughput systems                |
+| **Industry-grade**   | ❌ Not ideal                                  | ✅ Recommended                          |
+| **Thread lifecycle** | Short-lived                                  | Long-running                           |
+| **Thread control**   | Hard to manage, no shutdown                  | Easier control with flags/interruption |
+
+
+✅ In the Provided Code:
+Each call to produce(value) and consume() spawns a new thread:
+
+new Thread(() -> buffer.produce(value)).start();
+This means:
+Yes, it can simulate multiple producers and consumers — because each call creates a separate thread that can act concurrently.
+But it is not the "long-running producer/consumer" style where each producer/consumer runs in a loop.
+Each thread does just one operation (produce or consume) and dies.
+Not memory or CPU efficient under heavy load or continuous traffic.
+
+
+Alternative (Long-Running Thread) Approach:
+A more common industry-grade approach is:
+Have one or more producer threads running in a loop, producing values continuously or at intervals.
+Have one or more consumer threads running in a loop, consuming values continuously.

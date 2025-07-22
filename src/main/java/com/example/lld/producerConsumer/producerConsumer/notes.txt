@@ -1,0 +1,38 @@
+Case B
+
+Now i don't care its synchronous or asynchronous.
+But one thing is there. If queue is full, and we produce some value,
+ we won't be able to produce anything. In above implementation, we return.
+ So if we are producing (5) we loose that information.
+Solution of it could be using wait and notify inside while loop.
+ But I want to have only 1 main thread. Is it possible or
+  I need to create 1 thread for producer and consumer
+
+
+🔁 The Problem You Raised
+You correctly observed:
+If the queue is full, your current implementation discards the value being produced.
+You want to block the producer until there’s space — like a real queue should behave.
+But you want to do this with only 1 main thread.
+🤔 Is it possible with only one thread?
+No, it is not possible to simulate a blocking queue behavior using just one thread without busy waiting.
+
+Here’s why:
+When your single thread calls produce(5) and the queue is full:
+Ideally, it should pause and wait for some item to be consumed.
+But in your design, there’s no second thread to consume anything while this thread is waiting.
+So the system deadlocks (or you’d need to use a loop to poll repeatedly — which is inefficient and not a proper blocking queue).
+
+✅ What’s the solution?
+You must have at least 2 threads:
+One thread continuously or occasionally producing.
+Another thread continuously or occasionally consuming.
+This way, if produce() blocks due to full queue, it will resume when consume() frees up space — handled by the other thread.
+
+
+
+  | Design           | Threads            | Blocking?     | Queue full handling                             |
+  | ---------------- | ------------------ | ------------- | ----------------------------------------------- |
+  | Main thread only | 1                  | ❌ No blocking | Producer loses data or busy waits               |
+  | Main + Thread    | 2                  | ✅ Yes         | Wait/Notify pattern works properly              |
+  | Java built-in    | Internally managed | ✅ Yes         | Use `BlockingQueue` (like `ArrayBlockingQueue`) |
