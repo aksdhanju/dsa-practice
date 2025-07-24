@@ -1,0 +1,13 @@
+Lambda expressions in Java, introduced in Java SE 8.
+ It represents the instances of functional interfaces (interfaces with a single
+ abstract method). They provide a concise way to express instances of single-method
+ interfaces using a block of code.
+
+ LambdaExpression nahi hota to object ka instance hota jaha lambda expression hai
+ then class banata, then method banata joki functional interface ka only abstract method tha
+ then jo cheez lambda expression ki body mein hai, wahi cheez method ki body mein likhta
+ par kyuki ek hi method implement hoga in child class
+
+
+If we want to represent a group of objects as a single entity then we should go for collection.
+But if we want to process objects from the collection then we should go for streams.
