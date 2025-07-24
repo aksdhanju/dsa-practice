@@ -1,0 +1,51 @@
+Note:
+I did LinkedBlockinQueue implementation in this package
+no need to use synchronized, wait , notify with it
+
+To implement topic based functionality
+we need different instances of Buffer/MessageQueue class
+
+Who will hold the responsibility of holding different queues
+Its actually brokers
+MessageBroker class mein we can keep a HashMap of topicName as key and blocking queue as value
+
+| Concern               | How we handle it                                            |
+| --------------------- | ----------------------------------------------------------- |
+| **Multiple topics**   | Separate queues per topic in `MessageBroker`                |
+| **Thread safety**     | Uses `ConcurrentHashMap` and `BlockingQueue`                |
+| **Backpressure**      | `BlockingQueue.put()` blocks if full                        |
+| **Concurrency**       | Uses `ExecutorService` to manage threads cleanly            |
+| **Extensibility**     | Easy to add retry, durable storage, dead-letter queue, etc. |
+| **Graceful shutdown** | `stop()` flag + `shutdownNow()` and `awaitTermination()`    |
+
+
+Question 1
+Now important point is raised till now we are publishing messages/values by generating them in a
+while loop in producer class. Actually we should receive what values we need to publish
+from CLient?
+
+You're right — your current code generates messages within the Producer's run()
+ method using a counter (count). However, in a real-world pub-sub system,
+  messages should originate from external clients or services, not from within the Producer loop.
+
+To simulate client-sent messages (e.g. from a REST API), you should
+decouple message generation from the Producer loop, and allow clients to
+submit messages to the producer externally.
+
+Question 2 (in 05)
+Let's now add acknowledgements, and then progressively incorporate more
+ advanced features like message persistence, ordered delivery, and
+  multi-consumer support per topic.
+
+| Feature                                      | Description                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| **1. Acknowledgement Support**               | ✅ Done above                                                       |
+| **2. Message Retry or DLQ**                  | If a consumer crashes or doesn't ack in time                       |
+| **3. Message Persistence**                   | Store messages in DB / file system (e.g., using H2/LevelDB/File)   |
+| **4. Multiple Consumers per Topic**          | Support multiple consumers for same topic (round-robin or all-get) |
+| **5. Consumer Offset Tracking**              | Like Kafka — to allow replay or recovery                           |
+| **6. At-Least-Once / Exactly-Once Delivery** | Guarantee delivery semantics                                       |
+| **7. Web/Client API**                        | Accept messages via HTTP instead of hardcoded producers            |
+| **8. Topic Partitions**                      | For scalability                                                    |
+| **9. Distributed Brokers**                   | Handle high loads (stretch goal)                                   |
+

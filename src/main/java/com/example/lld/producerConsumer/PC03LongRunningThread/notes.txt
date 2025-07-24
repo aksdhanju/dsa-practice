@@ -1,0 +1,139 @@
+| Feature              | One-Thread-Per-Call                          | Long-Running Threads                   |
+| -------------------- | -------------------------------------------- | -------------------------------------- |
+| **Style**            | Spawn thread per `produce()` or `consume()`  | One thread runs in loop                |
+| **Threads**          | Potentially hundreds/thousands (inefficient) | Fixed number (more efficient)          |
+| **Use case**         | Simple demos or infrequent events            | High-throughput systems                |
+| **Industry-grade**   | ❌ Not ideal                                  | ✅ Recommended                          |
+| **Thread lifecycle** | Short-lived                                  | Long-running                           |
+| **Thread control**   | Hard to manage, no shutdown                  | Easier control with flags/interruption |
+
+Alternative (Long-Running Thread) Approach:
+A more common industry-grade approach is:
+Have one or more producer threads running in a loop, producing values continuously or at intervals.
+Have one or more consumer threads running in a loop, consuming values continuously.
+
+✅ Which Should You Use?
+For real-world production systems, long-running threads are preferred.
+Spawning a new thread for every produce/consume event adds unnecessary overhead and does not scale well.
+Long-running threads can be managed using:
+Thread pools (ExecutorService)
+Graceful shutdown using interrupt flags
+Retry mechanisms
+
+✅ TL;DR:
+Yes, your current design is multi-producer/consumer capable, but inefficient.
+Better design: spawn dedicated long-living producer and consumer threads.
+That’s the industry best practice, especially under load.
+
+
+Note: Main2, Consumer2, Producer2 has following features:
+Here is the complete long-running producer-consumer implementation using Java, with full best practices:
+It uses wait() and notifyAll() for coordination.
+It gracefully shuts down using AtomicBoolean flags and proper interrupt() handling.
+It runs producer and consumer on separate threads with simulated delays.
+
+
+Further enhancements:
+Long-running threads can be managed using:
+Thread pools (ExecutorService)
+
+lets say in interview i was asked to design real time pub sub system and i designed till now.
+lets say long running producer and consumer thread with wait notify handling, graceful shutdown and interrupt handling
+What future extensions and requirements can be asked by interviewer at this stage?
+
+Now, in an interview, the interviewer might push you further on:
+
+✅ 1. Thread Management Using ExecutorService (Thread Pools)
+Instead of starting raw threads:
+
+new Thread(new ProducerWorker(buffer)).start();
+Use a thread pool:
+
+ExecutorService executor = Executors.newFixedThreadPool(2);
+executor.submit(new ProducerWorker(buffer));
+executor.submit(new ConsumerWorker(buffer));
+Why?
+
+Controls max thread usage
+Reuses threads (efficient resource use)
+Supports graceful shutdown with shutdown() and awaitTermination()
+Scales to many producers/consumers without manually managing threads
+You can implement Runnable or Callable in your producer/consumer classes.
+
+🔮 Interviewer Follow-Up: “What future extensions would you consider?”
+Now that you’ve built a functional system, here’s what they may ask next:
+
+⚙️ 2. Scalability
+How will you support 1000s of producers and consumers?
+
+✅ Ideas:
+Use a thread pool (ExecutorService) per role
+Use bounded queues for backpressure
+Use Kafka / Redis Streams for distributed pub-sub
+
+⏳ 3. Backpressure and Rate Limiting
+What if producers are faster than consumers?
+✅ Solutions:
+Bounded queues
+Reject or drop oldest messages (like LRU)
+Use reactive programming model (Reactor, RxJava)
+
+💥 4. Fault Tolerance
+What happens if a consumer crashes? Do you lose messages?
+✅ Ideas:
+Add message acknowledgment
+Retry on failure
+Use durable queues (disk persistence)
+
+💾 5. Persistence / Durability
+Do you want messages to survive process restarts?
+✅ Solutions:
+Use persistent queues: Kafka, RabbitMQ, or custom disk-backed queues
+
+🧵 6. Multi-topic Support
+Can this system handle multiple topics or channels?
+
+✅ Extensions:
+Use a Map<String, Queue<Message>> structure per topic
+Have topic-based subscribers
+Allow clients to subscribe to multiple topics
+
+⚖️ 7. Load Balancing & Partitioning
+Can multiple consumers work on the same topic?
+
+✅ Solutions:
+Partition messages across consumers
+Add a work-stealing mechanism
+Use consistent hashing or consumer groups (like Kafka)
+
+🔐 8. Security
+Can anyone publish or consume?
+
+✅ Extensions:
+Add producer/consumer authentication
+Add access control per topic
+
+📈 9. Monitoring and Metrics
+How will you know system health?
+
+✅ Add:
+Queue size metrics
+Producer/consumer throughput
+Error rates
+
+🔁 10. Retry / Dead Letter Queue
+What if a message always fails to process?
+
+✅ Add:
+Retry logic with exponential backoff
+Dead-letter queue (store failed messages separately)
+
+Question1:
+In this code if i set thread pool size to 5, what it would mean.
+would 5 threads be created.
+how many of them will be producer thread and how many would be consumer thread?
+
+
+See Main3
+And in each producer thread, producer will be writing elements to queue starting from value = 0 till infinity unless running.set(false);
+ExecutorService executor = Executors.newFixedThreadPool(5);

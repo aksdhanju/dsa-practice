@@ -1,0 +1,38 @@
+Question 2 (in 05)
+Acknowledgement related changes are in 05
+Introduce new Message class
+acknowledgement should be a property inside Message class.
+Producer and Main class is same as 04
+🔁 The producer still calls broker.publish(topic, content), and MessageBroker wraps that content in a Message object internally.
+
+| Component       | Changes Made                                                                |
+| --------------- | --------------------------------------------------------------------------- |
+| `Message`       | New class to wrap content and acknowledgement logic                         |
+| `MessageBroker` | Now holds `BlockingQueue<Message>` and wraps content into `Message` objects |
+| `Consumer`      | Takes `Message`, processes it, and calls `.acknowledge()`                   |
+| `Producer`      | No change in usage — still publishes strings to topics                      |
+| `Main`          | Use `ExecutorService` instead of raw threads                                |
+
+🔜 What's Next?
+Would you like to:
+Add a retry + DLQ feature if message isn't acknowledged (e.g., simulate crash)?
+Persist messages (e.g., using File or MapDB)?
+Add multiple consumers per topic (like Kafka partitions)?
+
+
+Let's now add acknowledgements, and then progressively incorporate more
+ advanced features like message persistence, ordered delivery, and
+  multi-consumer support per topic.
+
+| Feature                                      | Description                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| **1. Acknowledgement Support**               | ✅ Done above                                                       |
+| **2. Message Retry or DLQ**                  | If a consumer crashes or doesn't ack in time                       |
+| **3. Message Persistence**                   | Store messages in DB / file system (e.g., using H2/LevelDB/File)   |
+| **4. Multiple Consumers per Topic**          | Support multiple consumers for same topic (round-robin or all-get) |
+| **5. Consumer Offset Tracking**              | Like Kafka — to allow replay or recovery                           |
+| **6. At-Least-Once / Exactly-Once Delivery** | Guarantee delivery semantics                                       |
+| **7. Web/Client API**                        | Accept messages via HTTP instead of hardcoded producers            |
+| **8. Topic Partitions**                      | For scalability                                                    |
+| **9. Distributed Brokers**                   | Handle high loads (stretch goal)                                   |
+

@@ -1,0 +1,27 @@
+What's Next? -> Persist messages (e.g., using File or MapDB)?
+
+We'll store every published message (including retries) in
+ a H2 database with fields like: id, topic, value, retryCount, status, timestamp.
+
+Great! Let's now extend your existing pub-sub system with message persistence using
+ an embedded database like H2. This will simulate durable storage for
+ messages—useful for recovery, crash resilience, and audit purposes.
+
+ We can either create connection instance once and use it throughout the application
+ //its commented code in the application.
+ or we could create new connection on every read, write call?
+
+
+
+| Feature                                      | Description                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| **1. Acknowledgement Support**               | ✅ Done above                                                       |
+| **2. Message Retry or DLQ**                  | ✅If a consumer crashes or doesn't ack in time                       |
+| **3. Message Persistence**                   | ✅Store messages in DB / file system (e.g., using H2/LevelDB/File)   |
+| **4. Multiple Consumers per Topic**          | (->)Support multiple consumers for same topic (round-robin or all-get) |
+| **5. Consumer Offset Tracking**              | Like Kafka — to allow replay or recovery                           |
+| **6. At-Least-Once / Exactly-Once Delivery** | Guarantee delivery semantics                                       |
+| **7. Web/Client API**                        | Accept messages via HTTP instead of hardcoded producers            |
+| **8. Topic Partitions**                      | For scalability                                                    |
+| **9. Distributed Brokers**                   | Handle high loads (stretch goal)                                   |
+

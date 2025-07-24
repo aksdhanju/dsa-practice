@@ -1,0 +1,184 @@
+What's Next? -> Support multiple consumers for same topic (round-robin or all-get)
+✅ Current Model:
+You have:
+Topics (like orders, notifications)
+Producers publishing messages to a topic queue.
+Single Consumer per topic (or fixed thread pool consuming from a topic)
+
+🚀 New Requirement:
+We want to support:
+Multiple consumers per topic (like different microservices consuming from orders)
+Each consumer gets its own copy of messages.
+Messages should not be lost until each subscriber has acknowledged.
+
+🔄 Analogy
+Think of a topic as a mailing list:
+Each subscriber (consumer) must individually receive and acknowledge every message.
+A message is deleted only after all subscribers have processed it or retention timeout hits.
+
+
+✅ Intuition
+Right now:
+Each topic maps to a single BlockingQueue<Message>, which consumers read from.
+This limits you to one queue per topic, which is not sufficient if multiple
+ consumers want independent message streams (like real subscribers).
+🎯 Goal
+Allow multiple subscribers per topic, where each subscriber gets its own queue.
+When a producer publishes to a topic, the message is fanned out to all queues
+of subscribers of that topic.
+
+| Feature                                      | Description                                                        |
+| -------------------------------------------- | ------------------------------------------------------------------ |
+| **1. Acknowledgement Support**               | ✅ Done above                                                       |
+| **2. Message Retry or DLQ**                  | ✅If a consumer crashes or doesn't ack in time                       |
+| **3. Message Persistence**                   | ✅Store messages in DB / file system (e.g., using H2/LevelDB/File)   |
+| **4. Multiple Consumers per Topic**          | (->)Support multiple consumers for same topic (round-robin or all-get) |
+| **5. Consumer Offset Tracking**              | Like Kafka — to allow replay or recovery                           |
+| **6. At-Least-Once / Exactly-Once Delivery** | Guarantee delivery semantics                                       |
+| **7. Web/Client API**                        | Accept messages via HTTP instead of hardcoded producers            |
+| **8. Topic Partitions**                      | For scalability                                                    |
+| **9. Distributed Brokers**                   | Handle high loads (stretch goal)                                   |
+
+
+🔁 Why We Call It "Subscriber" Now Instead of "Consumer"
+🔹 1. Single Consumer Model (Before)
+Previously, for each topic:
+There was only one consumer.
+That consumer would consume (pop) messages from the topic queue.
+Once consumed, the message was removed from the queue (no one else could read it).
+✅ In this model, "consumer" made sense — one party consumed and removed the message.
+
+🔹 2. Multiple Consumers per Topic (Now)
+Now with multiple consumers:
+Each consumer needs its own copy of the message.
+So when a producer publishes to a topic, the broker fans out the message to all listeners.
+Each consumer gets their own independent queue — they don’t compete.
+This is a pub-sub (publish-subscribe) pattern:
+The producer publishes a message to a topic.
+All subscribers to that topic get the message independently.
+🟢 This is why we now call them subscribers, not just consumers:
+They are subscribing to a stream of messages, not just consuming a shared queue.
+
+🔁 Summary
+Model	                Term Used	Why?
+Queue (Point-to-point)	Consumer	Only one party consumes and removes message
+Pub-Sub (Fan-out)	    Subscriber	Many parties receive a copy of each message
+
+
+
+Question: Thought his question may be irrelevant
+but can 1 subscriber consume from multiple queueus?
+can 2 subscribers consumer from same queue?
+
+✅ 1. Can 1 subscriber consume from multiple queues?
+Yes, absolutely.
+Just like a Kafka consumer can subscribe to multiple topics, a subscriber in your pub-sub system can:
+Register itself to multiple topics (queues).
+Each topic has its own message stream.
+The subscriber will maintain separate processing queues or inbox buffers for each.
+
+🔁 In your Java pub-sub system:
+You can call broker.subscribe("topicA", subscriberA) and broker.subscribe("topicB", subscriberA)
+ — and subscriberA will get messages from both.
+It’s up to the subscriber logic to differentiate and process messages per topic.
+
+✅ 2. Can 2 subscribers consume from the same queue?
+That depends on the design pattern:
+
+🔹 a. In a Pub-Sub Model (Fan-out) — Like you're building now:
+Yes. Each subscriber gets its own copy of every message.
+They do not compete — both process the same message independently.
+
+🔹 b. In a Queue Model (Work Queue) — Like classic RabbitMQ:
+Yes, but messages are load balanced.
+If you have 2 subscribers (workers) on a queue:
+Each message is delivered to only one subscriber.
+This is used for horizontal scaling.
+
+📌 Summary
+Scenario	Allowed?	Explanation
+1 subscriber → multiple queues	✅ Yes	Subscriber can listen to multiple topics
+2 subscribers → same pub-sub topic	✅ Yes	Each gets all messages (fan-out)
+2 subscribers → same work queue (load balanced)	✅ Yes	Each gets different messages (round-robin or other strategy)
+
+
+
+
+
+To support two implementations of MessagePersistenceService —
+one using JDBC and another using an in-memory MessageStore —
+ and switch between them via a configuration flag, here’s how you can structure your code.
+
+ Step 1: Define a common interface
+ java
+ Copy
+ Edit
+ package com.example.lld.producerConsumer.PC08MultipleSubscribersPerTopic;
+
+ public interface MessagePersistence {
+     void saveMessage(String topic, String content, int retryCount, String status);
+     void deleteExpiredMessages(long expirationThreshold);
+     void close() throws Exception;
+
+     // Optional utility for debugging
+     default void printAllMessages() {}
+ }
+
+
+
+
+
+
+ Yes, exactly — to implement round-robin delivery instead of fan-out to all subscribers, you need to modify the publish method in the MessageBroker class.
+
+ 🔁 Fan-out vs. Round-Robin:
+ Fan-out: One message goes to all subscribers.
+
+ Round-robin: One message goes to only one subscriber per publish, selected in a rotating fashion.
+
+ ✅ Change Needed
+ Your current code likely does something like this (fan-out):
+
+ java
+ Copy
+ Edit
+ for (BlockingQueue<Message> subscriberQueue : topicSubscribers.get(topic)) {
+     subscriberQueue.put(message);  // Pushed to ALL subscribers
+ }
+ To change to round-robin, you’ll need to:
+
+ Maintain an index for each topic → current subscriber.
+
+ Deliver message to only one subscriber queue per publish, cycling through subscribers.
+
+ ✅ Step-by-step changes
+ 1. Add a round-robin tracker per topic:
+ private final Map<String, AtomicInteger> roundRobinIndex = new ConcurrentHashMap<>();
+ Initialize it in createTopic:
+
+ roundRobinIndex.put(topic, new AtomicInteger(0));
+ 2. Modify publish method:
+
+ public void publish(String topic, Message message) throws InterruptedException {
+     List<BlockingQueue<Message>> subscribers = topicSubscribers.get(topic);
+     if (subscribers == null || subscribers.isEmpty()) return;
+
+     int index = roundRobinIndex.get(topic).getAndUpdate(i -> (i + 1) % subscribers.size());
+     BlockingQueue<Message> selectedQueue = subscribers.get(index);
+     selectedQueue.put(message);
+     persistence.saveMessage(topic, message.getContent(), message.getRetryCount(), "PUBLISHED");
+ }
+ This ensures each message goes to only one subscriber, rotating through all subscribers.
+
+ 💡 Why use AtomicInteger.getAndUpdate?
+ It allows safe concurrent updates to the index even if multiple threads are publishing to the same topic
+
+
+
+ Future requirements
+ Make library generic. Should be able to support any type of message
+
+ Client should provide value that is produced to producer. It should not be a number value generated in
+ producer worker.
+
+ https://www.youtube.com/watch?v=zyUnwnzYDR4
