@@ -97,6 +97,7 @@ public class FunctionalInterfacePractice {
             return false;
         };
         Predicate<Integer> isEvenPredicate3 = (num) -> num % 2 == 0;
+        System.out.println(isEvenPredicate3.test(5));
 
         //7.Supplier
         Supplier<String> supplier1 = new Supplier<String>() {

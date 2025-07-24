@@ -8,7 +8,122 @@ Lambda expressions in Java, introduced in Java SE 8.
  then jo cheez lambda expression ki body mein hai, wahi cheez method ki body mein likhta
  par kyuki ek hi method implement hoga in child class
 
+📘 Literal meaning of predicate:
+In English or logic/mathematics, a predicate is:
+A function or statement that evaluates to either true or false for a given input.
+So for example:
+“Is the number even?” is a predicate.
+“Is the string empty?” is a predicate.
+“Is the user logged in?” — another predicate.
+
+So in Java:
+Predicate<Integer> isEven = i -> i % 2 == 0;
+This is a function that returns true or false depending on the value of i.
+
+🔁 Behind the scenes
+In your code:
+al.stream()
+  .filter(i -> i % 2 == 0)
+  .collect(Collectors.toList());
+The filter(...) method expects a Predicate<? super T>.
+
+So i -> i % 2 == 0 is automatically converted (via lambda expression) into an implementation of:
+Predicate<Integer> {
+    boolean test(Integer i) {
+        return i % 2 == 0;
+    }
+}
+🔧 If written manually, it would be:
+Predicate<Integer> isEven = new Predicate<Integer>() {
+    public boolean test(Integer i) {
+        return i % 2 == 0;
+    }
+};
+
+List<Integer> ls = al.stream()
+                     .filter(isEven)
+                     .collect(Collectors.toList());
 
 If we want to represent a group of objects as a single entity then we should go for collection.
 But if we want to process objects from the collection then we should go for streams.
 
+
+| Method        | Accepts Predicate? | Use Case                                  |
+| ------------- | ------------------ | ----------------------------------------- |
+| `anyMatch()`  | ✅ Yes              | At least one match                        |
+| `allMatch()`  | ✅ Yes              | All must match                            |
+| `noneMatch()` | ✅ Yes              | None should match                         |
+| `findFirst()` | ✅ via `filter()`   | First match                               |
+| `findAny()`   | ✅ via `filter()`   | Any one match                             |
+| `removeIf()`  | ✅ Yes (Collection) | Remove from collection based on condition |
+
+Great question! In Java Streams, Consumer<T> is a functional interface used
+in operations that accept a value
+ and perform some side effect (like printing) without returning a result.
+
+ | Method                 | Where It's Used | Accepts `Consumer`? | Notes                                   |
+ | ---------------------- | --------------- | ------------------- | --------------------------------------- |
+ | `Optional.ifPresent()` | `Optional<T>`   | ✅                   | Executes action if value exists         |
+ | `Stream.forEach()`     | Stream API      | ✅                   | Runs action for each element (terminal) |
+ | `Stream.peek()`        | Stream API      | ✅                   | Used for side-effects (intermediate)    |
+
+
+1. Intermediate operations transform a stream into another stream.
+1. filter(): Filters elements based on a specified condition.
+2. map(): Transforms each element in a stream to another value.
+3. sorted():  Sorts the elements of a stream.
+
+2. Terminal Operations
+Terminal Operations are the operations that on execution return a final result as an absolute value.
+
+collect(): It is used to return the result of the intermediate operations performed on the stream.
+forEach(): It iterates all the elements in a stream.
+reduce(): It is used to reduce the elements of a stream to a single value.
+
+3. Short Circuit Operations
+Short-circuit operations provide performance benefits by avoiding unnecessary
+ computations when the desired result can be obtained early. They are particularly useful when working with large or infinite streams.
+
+anyMatch(): it checks the stream if it satisfies the given condition.
+findFirst(): it checks the element that matches a given condition and stops
+processing when it finds it.
+
+
+A Stream Pipeline is a concept of chaining operations together Terminal
+ Operations and Intermediate Operations. A Pipeline contains a stream source,
+which is further followed by zero or more intermediate operations, and a terminal operation.
+
+
+✅ Intermediate Operations
+These return a new stream and are lazy (executed only when a terminal operation is called):
+
+| Operation                              | Description                                                        |
+| -------------------------------------- | ------------------------------------------------------------------ |
+| `filter(Predicate)`                    | Filters elements based on a condition                              |
+| `map(Function)`                        | Transforms elements into another form                              |
+| `flatMap(Function)`                    | Flattens nested structures (e.g., List of List)                    |
+| `distinct()`                           | Removes duplicate elements                                         |
+| `sorted()`                             | Sorts elements in natural order                                    |
+| `sorted(Comparator)`                   | Sorts elements using a custom comparator                           |
+| `limit(long)`                          | Limits the stream to a fixed number of elements                    |
+| `skip(long)`                           | Skips the first N elements                                         |
+| `peek(Consumer)`                       | Performs an action for each element (mainly for debugging/logging) |
+| `mapToInt`, `mapToLong`, `mapToDouble` | Converts stream to primitive specialized streams                   |
+
+✅ Terminal Operations
+These trigger processing and produce a result or side-effect:
+| Operation                  | Description                                                                |
+| -------------------------- | -------------------------------------------------------------------------- |
+| `forEach(Consumer)`        | Performs an action for each element                                        |
+| `forEachOrdered(Consumer)` | Same as `forEach` but respects encounter order (e.g., in parallel streams) |
+| `toArray()`                | Converts the stream into an array                                          |
+| `reduce(BinaryOperator)`   | Reduces elements to a single value                                         |
+| `collect(Collector)`       | Performs mutable reduction (e.g., to List, Set, Map)                       |
+| `min(Comparator)`          | Returns the minimum element according to the comparator, wrapped in Optional.                                               |
+| `max(Comparator)`          | Returns the maximum element according to the comparator, wrapped in Optional.
+| `count()`                  | Counts the number of elements                                              |
+| `anyMatch(Predicate)`      | Checks if any element matches a condition                                  |
+| `allMatch(Predicate)`      | Checks if all elements match a condition                                   |
+| `noneMatch(Predicate)`     | Checks if no element matches a condition                                   |
+| `findFirst()`              | Returns the first element (wrapped in Optional)                            |
+| `findAny()`                | Returns any element (especially useful for parallel streams)               |
